@@ -1,0 +1,28 @@
+#!/usr/bin/env php
+<?php
+
+echo 'Hello';
+
+class Blog
+{
+	private $dir_posts;
+	private $dir_dist;
+
+	public function __construct($options)
+	{
+		$this->dir_posts = $options['dir_posts'];
+		$this->dir_dist = $options['dir_dist'];
+	}
+
+	public function build()
+	{
+		
+	}
+}
+
+$blog = new Blog(array(
+	'dir_posts' => __DIR__ . "/_posts",
+	'dir_dist' => __DIR__ . "/www",
+));
+
+$blog->build();
