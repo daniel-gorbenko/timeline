@@ -83,6 +83,61 @@ class DirectoryScanner extends PathResolver
 	}
 }
 
+class View
+{
+    /**
+     * Set data from controller: $view->data['variable'] = 'value';
+     * @var array
+     */
+    public $data = [];
+
+    /**
+     * @var sting Path to template file.
+     */ 
+    function render($template)
+    {
+        if (!is_file($template)) {
+            throw new \RuntimeException('Template not found: ' . $template);
+        }
+
+        // define a closure with a scope for the variable extraction
+        $result = function($file, array $data = array()) {
+            ob_start();
+            extract($data, EXTR_SKIP);
+            try {
+                include $file;
+            } catch (\Exception $e) {
+                ob_end_clean();
+                throw $e;
+            }
+            return ob_get_clean();
+        };
+
+        return $result($template, $this->data);
+    }
+
+    function renderString($template)
+    {
+        $result = function($file, array $data = array()) {
+            ob_start();
+
+            extract($data, EXTR_SKIP);
+
+            try {
+                eval('?>' . $file);
+            } catch (\Exception $e) {
+                ob_end_clean();
+
+                throw $e;
+            }
+
+            return ob_get_clean();
+        };
+
+        return $result($template, $this->data);
+    }
+}
+
 class Post
 {
 	private const PARSE_STATE_INITIAL = 0;
@@ -92,19 +147,20 @@ class Post
 
 	private $filename;
 	private $file;
-	private $parsed_filename = array();
+	private $attributes = array();
 
 	private $meta;
 	private $content;
 
 	private $post_name_pattern = "/(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})-(?P<name>[a-zA-Z_-]+)\.(?P<ext>\w+)/";
 	private $post_folder_format = "%year/%month/%day";
+	private $post_date_format = "%year/%month/%day";
 	private $post_filename_format = "%name.html";
 
 	private $file_meta_start = "```json\r\n";
 	private $file_meta_end = "```\r\n";
 
-	private $allowed_post_filename_options = array(
+	private $allowed_post_filename_attributes = array(
 		'year',
 		'month',
 		'day',
@@ -125,8 +181,8 @@ class Post
 		preg_match($this->post_name_pattern, $this->filename, $matches);
 
 		foreach($matches as $key => $value) {
-			if(in_array($key, $this->allowed_post_filename_options)) {
-				$this->parsed_filename[$key] = $value;
+			if(in_array($key, $this->allowed_post_filename_attributes)) {
+				$this->attributes[$key] = $value;
 			}
 		}
 	}
@@ -135,7 +191,7 @@ class Post
 	{
 		$folder = $this->post_folder_format;
 
-		foreach($this->parsed_filename as $key => $value) {
+		foreach($this->attributes as $key => $value) {
 			$folder = str_replace("%$key", $value, $folder);
 		}
 
@@ -146,7 +202,7 @@ class Post
 	{
 		$folder = $this->post_filename_format;
 
-		foreach($this->parsed_filename as $key => $value) {
+		foreach($this->attributes as $key => $value) {
 			$folder = str_replace("%$key", $value, $folder);
 		}
 
@@ -156,8 +212,6 @@ class Post
 	public function handle()
 	{
 		$this->parseFile();
-
-		var_dump($this->getMeta());
 	}
 
 	private function parseFile()
@@ -212,14 +266,49 @@ class Post
 		$this->content = $content;
 	}
 
+	public function getDate()
+	{
+		$date = $this->post_date_format;
+
+		foreach($this->attributes as $key => $value) {
+			$date = str_replace("%$key", $value, $date);
+		}
+
+		return $date;
+	}
+	
+	public function getName()
+	{
+		return $this->attributes['name'];
+	}
+
 	public function getContent()
 	{
 		return $this->content;
 	}
 
-	public function getMeta()
+	public function getMeta($key = false)
 	{
+		if($key !== false) {
+			return $this->meta[$key];
+		}
+		
 		return $this->meta;
+	}
+
+	public function getAttributes()
+	{
+		return $this->attributes;
+	}
+
+	public function getCompiledContent()
+	{
+		$view = new View();
+
+		$view->data['meta'] = $this->getMeta();
+		$view->data['attributes'] = $this->getAttributes();
+		
+		return $view->renderString($this->getContent());
 	}
 }
 
@@ -228,6 +317,7 @@ class Blog
 	private $scanner;
 	private $dir_posts;
 	private $dir_dist;
+	private $dir_layouts;
 
 	private $post_folder_permissions = 0744;
 
@@ -235,6 +325,9 @@ class Blog
 	{
 		$this->dir_posts = $options['dir_posts'];
 		$this->dir_dist = $options['dir_dist'];
+		$this->dir_layouts = $options['dir_layouts'];
+		$this->layout_extension = $options['layout_extension'];
+
 		$this->scanner = $options['scanner'];
 
 		$this->path_resolver = new PathResolver();
@@ -291,13 +384,28 @@ class Blog
 
 		$post->handle();
 
-		file_put_contents($this->path_resolver->path_to_folder($post_folder, $post->getFilename()), $post->getContent());
+		$view = new View();
+
+		$view->data['meta'] = $post->getMeta();
+		$view->data['attributes'] = $post->getAttributes();
+		$view->data['content'] = $post->getCompiledContent();
+
+		$file_content = $view->render(
+			$this->path_resolver->path_to_folder(
+				$this->dir_layouts,
+				$post->getMeta('layout') . '.' . $this->layout_extension
+			)
+		);
+
+		file_put_contents($this->path_resolver->path_to_folder($post_folder, $post->getFilename()), $file_content);
 	}
 }
 
 $blog = new Blog(array(
 	'dir_posts' => __DIR__ . "/_posts",
 	'dir_dist' => __DIR__ . "/www",
+	'dir_layouts' => __DIR__ . "/_layouts",
+	'layout_extension' => "php",
 
 	'scanner' => new DirectoryScanner(),
 ));
