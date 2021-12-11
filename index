@@ -1,10 +1,69 @@
 #!/usr/bin/env php
 <?php
 
-echo 'Hello';
+class DirectoryScanner
+{
+	private $exclude_folders = array('.', '..');
+	private $exclude_extensions = array();
+
+	public function __construct($options = array())
+	{
+		$this->exclude_folders = isset($options['exclude_folders']) ? $options['exclude_folders'] : $this->exclude_folders;
+		$this->exclude_extensions = isset($options['exclude_extensions']) ? $options['exclude_extensions'] : $this->exclude_extensions;
+	}
+
+	public function scan($root_folder, $callback) {
+		$folders = scandir($root_folder);
+
+		foreach($folders as $folder) {
+			$current_path = self::path_to_folder($root_folder, $folder);
+
+			if(is_dir($current_path)) {
+				if(in_array($folder, $this->exclude_folders)) {
+					continue;
+				}
+
+				$callback($folder, $current_path, true);
+			} elseif(is_file($current_path)) {
+				if(in_array(pathinfo($current_path, PATHINFO_EXTENSION), $this->exclude_extensions)) {
+					continue;
+				}
+
+				$callback($folder, $current_path, false);
+			}
+		}
+	}
+
+	public static function path_to_folder()
+	{
+		$folders = func_get_args();
+
+		return self::get_absolute_path(implode('/', $folders));
+	}
+
+	public static function get_absolute_path($path)
+	{
+		$path = str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
+		$parts = array_filter(explode(DIRECTORY_SEPARATOR, $path), 'strlen');
+		$absolutes = array();
+
+		foreach ($parts as $part) {
+			if ('.' == $part) continue;
+			
+			if ('..' == $part) {
+				array_pop($absolutes);
+			} else {
+				$absolutes[] = $part;
+			}
+		}
+
+		return implode(DIRECTORY_SEPARATOR, $absolutes);
+	}
+}
 
 class Blog
 {
+	private $scanner;
 	private $dir_posts;
 	private $dir_dist;
 
@@ -12,17 +71,25 @@ class Blog
 	{
 		$this->dir_posts = $options['dir_posts'];
 		$this->dir_dist = $options['dir_dist'];
+		$this->scanner = $options['scanner'];
 	}
 
 	public function build()
 	{
-		
+		$this->scanner->scan($this->dir_posts, function ($filename, $filepath, $is_dir) {
+			echo "\r\n";
+			echo "Filename: $filename\r\n";
+			echo "Filepath: $filepath\r\n";
+			echo "Is dir: $is_dir\r\n";
+		});
 	}
 }
 
 $blog = new Blog(array(
 	'dir_posts' => __DIR__ . "/_posts",
 	'dir_dist' => __DIR__ . "/www",
+
+	'scanner' => new DirectoryScanner(),
 ));
 
 $blog->build();
