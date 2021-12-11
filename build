@@ -329,9 +329,13 @@ class Post
 class Blog
 {
 	private $scanner;
+
 	private $dir_posts;
+	private $dir_home;
 	private $dir_dist;
 	private $dir_layouts;
+	private $layout_extension;
+	private $file_dist_index;
 
 	private $post_folder_permissions = 0744;
 
@@ -341,6 +345,7 @@ class Blog
 		$this->dir_dist = $options['dir_dist'];
 		$this->dir_layouts = $options['dir_layouts'];
 		$this->layout_extension = $options['layout_extension'];
+		$this->file_dist_index = $options['file_dist_index'];
 
 		$this->scanner = $options['scanner'];
 
@@ -350,8 +355,14 @@ class Blog
 	public function build()
 	{
 		$this->scanner->clean($this->dir_dist, false);
+		$this->prepareDistDir();
 
 		$this->scanLocales($this->dir_posts);
+	}
+	
+	private function prepareDistDir()
+	{
+		copy($this->file_dist_index, $this->path_resolver->path_to_folder($this->dir_dist, 'index.php'));
 	}
 
 	private function scanLocales($dir)
@@ -417,9 +428,11 @@ class Blog
 
 $blog = new Blog(array(
 	'dir_posts' => __DIR__ . "/_posts",
+	'dir_home' => __DIR__ . "/_home",
 	'dir_dist' => __DIR__ . "/www",
 	'dir_layouts' => __DIR__ . "/_layouts",
 	'layout_extension' => "php",
+	'file_dist_index' => __DIR__ . "/_www/index.php",
 
 	'scanner' => new DirectoryScanner(),
 ));
