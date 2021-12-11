@@ -1,6 +1,8 @@
 #!/usr/bin/env php
 <?php
 
+require_once 'Parsedown.php';
+
 class PathResolver
 {
 	public static function path_to_folder()
@@ -303,12 +305,24 @@ class Post
 
 	public function getCompiledContent()
 	{
+		return $this->markdown($this->template());
+	}
+
+	public function template()
+	{
 		$view = new View();
 
 		$view->data['meta'] = $this->getMeta();
 		$view->data['attributes'] = $this->getAttributes();
 		
 		return $view->renderString($this->getContent());
+	}
+
+	public function markdown($text)
+	{
+		$Parsedown = new Parsedown();
+
+		return $Parsedown->text($text);
 	}
 }
 
