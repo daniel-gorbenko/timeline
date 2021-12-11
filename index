@@ -89,6 +89,18 @@ class Blog
 	private $dir_posts;
 	private $dir_dist;
 
+	private $post_folder_permissions = 0744;
+
+	private $allowed_post_filename_options = array(
+		'year',
+		'month',
+		'day',
+		'name',
+		'ext'
+	); 
+
+	private $post_name_pattern = "/(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})-(?P<name>[a-zA-Z_-]+)\.(?P<ext>\w+)/";
+
 	public function __construct($options)
 	{
 		$this->dir_posts = $options['dir_posts'];
@@ -132,9 +144,38 @@ class Blog
 
 	private function createPost($locale, $filename, $path)
 	{
+		$parsed_post_name = $this->parsePostFilename($filename);
+
+		$post_folder = $this->path_resolver->path_to_folder(
+			$this->dir_dist,
+			$locale,
+			$parsed_post_name['year'],
+			$parsed_post_name['month'],
+			$parsed_post_name['day']
+		);
+
+		if(!file_exists($post_folder)) {
+			mkdir($post_folder, $this->post_folder_permissions, true);
+		}
+
 		$content = file_get_contents($path);
 
-		file_put_contents($this->path_resolver->path_to_folder($this->dir_dist, $locale, $filename), $content);
+		file_put_contents($this->path_resolver->path_to_folder($post_folder, $parsed_post_name['name']), $content);
+	}
+
+	private function parsePostFilename($filename)
+	{
+		preg_match($this->post_name_pattern, $filename, $matches);
+
+		$data = array();
+
+		foreach($matches as $key => $value) {
+			if(in_array($key, $this->allowed_post_filename_options)) {
+				$data[$key] = $value;
+			}
+		}
+
+		return $data;
 	}
 }
 
