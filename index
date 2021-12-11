@@ -1,7 +1,36 @@
 #!/usr/bin/env php
 <?php
 
-class DirectoryScanner
+class PathResolver
+{
+	public static function path_to_folder()
+	{
+		$folders = func_get_args();
+
+		return self::get_absolute_path(implode('/', $folders));
+	}
+
+	public static function get_absolute_path($path)
+	{
+		$path = str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
+		$parts = array_filter(explode(DIRECTORY_SEPARATOR, $path), 'strlen');
+		$absolutes = array();
+
+		foreach ($parts as $part) {
+			if ('.' == $part) continue;
+			
+			if ('..' == $part) {
+				array_pop($absolutes);
+			} else {
+				$absolutes[] = $part;
+			}
+		}
+
+		return implode(DIRECTORY_SEPARATOR, $absolutes);
+	}
+}
+
+class DirectoryScanner extends PathResolver
 {
 	private $exclude_folders = array('.', '..');
 	private $exclude_extensions = array();
@@ -52,32 +81,6 @@ class DirectoryScanner
 			rmdir($dir);
 		}
 	}
-
-	public static function path_to_folder()
-	{
-		$folders = func_get_args();
-
-		return self::get_absolute_path(implode('/', $folders));
-	}
-
-	public static function get_absolute_path($path)
-	{
-		$path = str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
-		$parts = array_filter(explode(DIRECTORY_SEPARATOR, $path), 'strlen');
-		$absolutes = array();
-
-		foreach ($parts as $part) {
-			if ('.' == $part) continue;
-			
-			if ('..' == $part) {
-				array_pop($absolutes);
-			} else {
-				$absolutes[] = $part;
-			}
-		}
-
-		return implode(DIRECTORY_SEPARATOR, $absolutes);
-	}
 }
 
 class Blog
@@ -91,18 +94,47 @@ class Blog
 		$this->dir_posts = $options['dir_posts'];
 		$this->dir_dist = $options['dir_dist'];
 		$this->scanner = $options['scanner'];
+
+		$this->path_resolver = new PathResolver();
 	}
 
 	public function build()
 	{
 		$this->scanner->clean($this->dir_dist, false);
 
-		$this->scanner->scan($this->dir_posts, function ($filename, $path, $is_dir) {
-			echo "\r\n";
-			echo "Filename: $filename\r\n";
-			echo "Filepath: $path\r\n";
-			echo "Is dir: $is_dir\r\n";
+		$this->scanLocales($this->dir_posts);
+	}
+
+	private function scanLocales($dir)
+	{
+		$this->scanner->scan($dir, function ($filename, $path, $is_dir) {
+			if($is_dir) {
+				$this->createLocale($filename);
+			
+				$this->scanPosts($path, $filename);
+			}
 		});
+	}
+
+	private function scanPosts($dir, $locale)
+	{
+		$this->scanner->scan($dir, function ($filename, $path, $is_dir) use($locale) {
+			if(!$is_dir) {
+				$this->createPost($locale, $filename, $path);
+			}
+		});
+	}
+
+	private function createLocale($locale)
+	{
+		mkdir($this->path_resolver->path_to_folder($this->dir_dist, $locale));
+	}
+
+	private function createPost($locale, $filename, $path)
+	{
+		$content = file_get_contents($path);
+
+		file_put_contents($this->path_resolver->path_to_folder($this->dir_dist, $locale, $filename), $content);
 	}
 }
 
