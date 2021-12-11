@@ -83,13 +83,15 @@ class DirectoryScanner extends PathResolver
 	}
 }
 
-class Blog
+class Post
 {
-	private $scanner;
-	private $dir_posts;
-	private $dir_dist;
+	private $filename;
+	private $path;
+	private $parsed_filename = array();
 
-	private $post_folder_permissions = 0744;
+	private $post_name_pattern = "/(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})-(?P<name>[a-zA-Z_-]+)\.(?P<ext>\w+)/";
+	private $post_folder_format = "%year/%month/%day";
+	private $post_filename_format = "%name.html";
 
 	private $allowed_post_filename_options = array(
 		'year',
@@ -99,7 +101,55 @@ class Blog
 		'ext'
 	); 
 
-	private $post_name_pattern = "/(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})-(?P<name>[a-zA-Z_-]+)\.(?P<ext>\w+)/";
+	public function __construct($options)
+	{
+		$this->filename = $options['filename'];
+		$this->path = $options['path'];
+
+		$this->parseFilename();
+	}
+
+	private function parseFilename()
+	{
+		preg_match($this->post_name_pattern, $this->filename, $matches);
+
+		foreach($matches as $key => $value) {
+			if(in_array($key, $this->allowed_post_filename_options)) {
+				$this->parsed_filename[$key] = $value;
+			}
+		}
+	}
+
+	public function getFolder()
+	{
+		$folder = $this->post_folder_format;
+
+		foreach($this->parsed_filename as $key => $value) {
+			$folder = str_replace("%$key", $value, $folder);
+		}
+
+		return $folder;
+	}
+
+	public function getFilename()
+	{
+		$folder = $this->post_filename_format;
+
+		foreach($this->parsed_filename as $key => $value) {
+			$folder = str_replace("%$key", $value, $folder);
+		}
+
+		return $folder;
+	}
+}
+
+class Blog
+{
+	private $scanner;
+	private $dir_posts;
+	private $dir_dist;
+
+	private $post_folder_permissions = 0744;
 
 	public function __construct($options)
 	{
@@ -144,14 +194,15 @@ class Blog
 
 	private function createPost($locale, $filename, $path)
 	{
-		$parsed_post_name = $this->parsePostFilename($filename);
+		$post = new Post(array(
+			'filename' => $filename,
+			'path' => $path,
+		));
 
 		$post_folder = $this->path_resolver->path_to_folder(
 			$this->dir_dist,
 			$locale,
-			$parsed_post_name['year'],
-			$parsed_post_name['month'],
-			$parsed_post_name['day']
+			$post->getFolder()
 		);
 
 		if(!file_exists($post_folder)) {
@@ -160,22 +211,7 @@ class Blog
 
 		$content = file_get_contents($path);
 
-		file_put_contents($this->path_resolver->path_to_folder($post_folder, $parsed_post_name['name']), $content);
-	}
-
-	private function parsePostFilename($filename)
-	{
-		preg_match($this->post_name_pattern, $filename, $matches);
-
-		$data = array();
-
-		foreach($matches as $key => $value) {
-			if(in_array($key, $this->allowed_post_filename_options)) {
-				$data[$key] = $value;
-			}
-		}
-
-		return $data;
+		file_put_contents($this->path_resolver->path_to_folder($post_folder, $post->getFilename()), $content);
 	}
 }
 
