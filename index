@@ -85,6 +85,11 @@ class DirectoryScanner extends PathResolver
 
 class Post
 {
+	private const PARSE_STATE_INITIAL = 0;
+	private const PARSE_STATE_META = 1;
+	private const PARSE_STATE_EMPTY_LINE = 2;
+	private const PARSE_STATE_CONTENT = 3;
+
 	private $filename;
 	private $file;
 	private $parsed_filename = array();
@@ -160,25 +165,36 @@ class Post
 		$meta = array();
 		$content = array();
 
-		$meta_flag = false;
+		$state = self::PARSE_STATE_INITIAL;
 
 		foreach($this->file as $line) {
 			if($line === $this->file_meta_start) {
-				$meta_flag = true;
+				$state = self::PARSE_STATE_META;
 				
 				continue;
 			}
 			
 			if($line === $this->file_meta_end) {
-				$meta_flag = false;
+				$state = self::PARSE_STATE_EMPTY_LINE;
 				
 				continue;
 			}
 
-			if($meta_flag) {
-				$meta[] = $line;
-			} else {
-				$content[] = $line;
+			switch($state) {
+				case self::PARSE_STATE_META:
+					$meta[] = $line;
+
+					break;
+				case self::PARSE_STATE_EMPTY_LINE:
+					$state = self::PARSE_STATE_CONTENT;
+					
+					break;
+				case self::PARSE_STATE_CONTENT:
+					$content[] = $line;
+					
+					break;
+				default:
+					break;
 			}
 		}
 
