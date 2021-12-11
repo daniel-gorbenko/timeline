@@ -13,6 +13,8 @@ class DirectoryScanner
 	}
 
 	public function scan($root_folder, $callback) {
+		$root_folder = self::path_to_folder($root_folder);
+
 		$folders = scandir($root_folder);
 
 		foreach($folders as $folder) {
@@ -31,6 +33,23 @@ class DirectoryScanner
 
 				$callback($folder, $current_path, false);
 			}
+		}
+	}
+
+	public function clean($dir, $remove_root = false)
+	{
+		$this->scan($dir, function ($filename, $path, $is_dir) {
+			if($is_dir) {
+				$this->clean($path);
+
+				rmdir($path);
+			} else {
+				unlink($path);
+			}
+		});
+
+		if($remove_root) {
+			rmdir($dir);
 		}
 	}
 
@@ -76,10 +95,12 @@ class Blog
 
 	public function build()
 	{
-		$this->scanner->scan($this->dir_posts, function ($filename, $filepath, $is_dir) {
+		$this->scanner->clean($this->dir_dist, false);
+
+		$this->scanner->scan($this->dir_posts, function ($filename, $path, $is_dir) {
 			echo "\r\n";
 			echo "Filename: $filename\r\n";
-			echo "Filepath: $filepath\r\n";
+			echo "Filepath: $path\r\n";
 			echo "Is dir: $is_dir\r\n";
 		});
 	}
