@@ -342,6 +342,7 @@ class Blog
 	public function __construct($options)
 	{
 		$this->dir_posts = $options['dir_posts'];
+		$this->dir_home = $options['dir_home'];
 		$this->dir_dist = $options['dir_dist'];
 		$this->dir_layouts = $options['dir_layouts'];
 		$this->layout_extension = $options['layout_extension'];
@@ -358,11 +359,25 @@ class Blog
 		$this->prepareDistDir();
 
 		$this->scanLocales($this->dir_posts);
+		$this->scanHome($this->dir_home);
 	}
 	
 	private function prepareDistDir()
 	{
 		copy($this->file_dist_index, $this->path_resolver->path_to_folder($this->dir_dist, 'index.php'));
+	}
+
+	private function scanHome($dir)
+	{
+		$this->scanner->scan($dir, function ($locale, $path, $is_dir) {
+			if($is_dir) {
+				$this->scanner->scan($path, function ($filename, $path, $is_dir) use($locale) {
+					if(!$is_dir) {
+						$this->createHome($locale, $filename, $path);
+					}
+				});
+			}
+		});
 	}
 
 	private function scanLocales($dir)
@@ -388,6 +403,21 @@ class Blog
 				$this->createPost($locale, $filename, $path);
 			}
 		});
+	}
+
+	private function createHome($locale, $filename, $path)
+	{
+		$homefile = $this->path_resolver->path_to_folder(
+			$this->dir_dist,
+			$locale,
+			$filename
+		);
+
+		$view = new View();
+
+		$file_content = $view->render($path);
+
+		file_put_contents($homefile, $file_content);
 	}
 
 	private function createPost($locale, $filename, $path)
@@ -433,6 +463,7 @@ $blog = new Blog(array(
 	'dir_layouts' => __DIR__ . "/_layouts",
 	'layout_extension' => "php",
 	'file_dist_index' => __DIR__ . "/_www/index.php",
+	'file_post_folder_stub' => __DIR__ . "/_www/index.php",
 
 	'scanner' => new DirectoryScanner(),
 ));
