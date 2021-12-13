@@ -1,0 +1,70 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/vendor/ru2entranslit.php';
+
+$dir_dist = __DIR__ . '/_posts/';
+$file_template = __DIR__ . '/_post.md';
+
+$input = readline("Title: ");
+if(!$input) {
+	echo "Title is required!" . "\r\n";
+
+	exit;
+} else {
+	$title = $input;
+}
+
+$keywords = "";
+$input = readline("[Keywords]: ");
+$keywords = ($input) ? $input : $keywords;
+if($keywords) {
+	$keywords = '"' . implode('", "', array_map('trim', explode(",", $keywords))) . '"';
+}
+
+$description = "";
+$input = readline("[Description]: ");
+$description = ($input) ? $input : $description;
+
+$date = date("Y-m-d");
+$input = readline("Date [$date]: ");
+$date = ($input) ? $input : $date;
+
+$locale = "ru";
+$input = readline("Locale [$locale]: ");
+$locale = ($input) ? $input : $locale;
+
+$layout = "post";
+$input = readline("Layout [$layout]: ");
+$layout = ($input) ? $input : $layout;
+
+$meta = array(
+	'title' => $title,
+	'locale' => $locale,
+	'layout' => $layout,
+	'keywords' => $keywords,
+	'description' => $description
+);
+
+$meta_search = array(
+	'%title',
+	'%locale',
+	'%layout',
+	'%keywords',
+	'%description',
+);
+
+$path = Ru2EnTranslit::translit_and_url($title);
+$filename_dist = $date . '-' . $path . '.' . 'md';
+$filepath_dist = $dir_dist . $filename_dist;
+if(file_exists($filepath_dist)) {
+	echo "Page `$filename_dist` already exist" . "\r\n";
+	echo "Choose another title or date" . "\r\n";
+	
+	exit;
+}
+
+$file_source = file_get_contents($file_template);
+$content = str_replace($meta_search, $meta, $file_source);
+
+file_put_contents($filepath_dist, $content);
