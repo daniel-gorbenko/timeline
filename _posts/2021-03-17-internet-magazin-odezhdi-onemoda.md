@@ -3,7 +3,7 @@
 	"locale": "ru",
 	"layout": "post",
 	"title": "Интернет-магазин одежды Onemoda",
-	"keywords": ["имплементация", "с нуля", "интернет-магазин", "opencart", "stripe"],
+	"keywords": ["имплементация", "с нуля", "интернет-магазин", "php", "sql", "shared hosting", "opencart", "stripe", "apple pay", "amazon pay", "paypal", "affirm", "фиды", "google merchant center", "facebook data feed", "миграция базы данных", "seo url", "купоны", "wishlist"],
 	"description": ""
 }
 ```
@@ -34,7 +34,7 @@
 
 ## Платежные методы
 
-**Stripe**. Был написан модуль оплаты Stripe для Opencart 2.3.* с использованием [PHP SDK от Stripe](https://stripe.com/docs/api). Учтены налоги для опредленного штата и примененные покупателем купоны.
+**Stripe (Apple Pay)**. Был написан модуль оплаты Stripe для Opencart 2.3.* с использованием [PHP SDK от Stripe](https://stripe.com/docs/api). Учтены налоги для опредленного штата и примененные покупателем купоны.
 
 **Amazon Pay**. Доведен до ума стандартный для Opencart 2.3.*, не рабочий из коробки, модуль для оплаты Amazon Pay.
 
