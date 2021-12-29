@@ -3,7 +3,7 @@
 	"locale": "ru",
 	"layout": "post",
 	"title": "Интернет-магазин одежды Onemoda",
-	"keywords": ["имплементация", "с нуля", "интернет-магазин", "php", "sql", "shared hosting", "opencart", "opencart 2.3", "stripe", "apple pay", "amazon pay", "paypal", "affirm", "фиды", "google merchant center", "facebook data feed", "миграция базы данных", "seo url", "купоны", "wishlist"],
+	"keywords": ["имплементация", "с нуля", "интернет-магазин", "php", "sql", "shared hosting", "opencart", "opencart 2.3", "stripe", "apple pay", "amazon pay", "paypal", "affirm", "фиды", "google merchant center", "facebook data feed", "миграция базы данных", "seo url", "купоны", "wishlist", "экспорт"],
 	"description": ""
 }
 ```
